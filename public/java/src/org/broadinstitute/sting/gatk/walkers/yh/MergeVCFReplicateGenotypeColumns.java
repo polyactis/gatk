@@ -50,32 +50,12 @@ import org.broadinstitute.sting.utils.variantcontext.VariantContextBuilder;
 import org.broadinstitute.sting.utils.variantcontext.VariantContextUtils;
 
 public class MergeVCFReplicateGenotypeColumns extends MergeVCFReplicateHaplotypes{
-	@ArgumentCollection
-	protected StandardVariantContextInputArgumentCollection variantCollection = new StandardVariantContextInputArgumentCollection();
-
-	@Output(doc = "File to which variants should be written", required = true)
-	public VCFWriter vcfWriter;
-	
-	@Argument(fullName = "replicateIndividualTag", shortName = "rTag", doc = "tag that separates the true sample ID and the replicate count",
-			required = true)
-	String replicateIndividualTag = "copy";
-	
-	// 2011.11.28
-	@Argument(fullName = "onlyKeepBiAllelicSNP", doc = "set this to true to remove SNPs with >=3 alleles", required = false)
-	Boolean onlyKeepBiAllelicSNP = false;	
-	
+	//@ArgumentCollection
+	//protected StandardVariantContextInputArgumentCollection variantCollection = new StandardVariantContextInputArgumentCollection();
 	
 	// key is sample ID, value is a list of minDepth, maxDepth, [minGQ|-1.0].
-	Long no_of_total_genotypes = (long) 0;
-	Long no_of_included_genotypes = (long) 0;
-	Long no_of_retained_loci = (long) 0;
-	Long no_of_nonBiAllelicLoci = (long) 0;
 	private TreeSet<String> samples = new TreeSet<String>();
 
-	// 2012.3.30 do keep the original AC, AF, AN
-	private boolean KEEP_ORIGINAL_CHR_COUNTS = true;
-	
-	Map<String, String> sampleID2trueSampleID = new HashMap<String, String>();
 	
 	// 2012.7.30 no initialize() , inherited from MergeVCFReplicateHaplotypes
 	

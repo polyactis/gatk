@@ -66,7 +66,7 @@ public class MergeVCFReplicateHaplotypes extends RodWalker<Integer, Integer> {
 	protected StandardVariantContextInputArgumentCollection variantCollection = new StandardVariantContextInputArgumentCollection();
 
 	// 2013.06.18 make this argument optional for the child class CalculateConcordanceAmongReplicates, which does not need it
-	private @Output(doc = "File to which variants should be written", required = false)
+	protected @Output(doc = "File to which variants should be written", required = false)
 	VCFWriter vcfWriter;
 	
 	@Argument(fullName = "replicateIndividualTag", shortName = "rTag", doc = "tag that separates the true sample ID and the replicate count",
