@@ -181,7 +181,7 @@ public class VariantContext implements Feature { // to enable tribble integratio
     protected Type type = null;
 
     /** A set of the alleles segregating in this context */
-    final protected List<Allele> alleles;
+    final public List<Allele> alleles;
 
     /** A mapping from sampleName -> genotype objects for all genotypes associated with this context */
     protected GenotypesContext genotypes = null;

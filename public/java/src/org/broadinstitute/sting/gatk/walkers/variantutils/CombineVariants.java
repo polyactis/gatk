@@ -167,10 +167,10 @@ public class CombineVariants extends RodWalker<Integer, Integer> {
     @Argument(fullName="mergeInfoWithMaxAC", shortName="mergeInfoWithMaxAC", doc="If true, when VCF records overlap the info field is taken from the one with the max AC instead of only taking the fields which are identical across the overlapping records.", required=false)
     public boolean MERGE_INFO_WITH_MAX_AC = false;
 
-    private List<String> priority = null;
+    protected List<String> priority = null;
 
     /** Optimization to strip out genotypes before merging if we are doing a sites_only output */
-    private boolean sitesOnlyVCF = false;
+    protected boolean sitesOnlyVCF = false;
 
     public void initialize() {
         Map<String, VCFHeader> vcfRods = VCFUtils.getVCFHeadersFromRods(getToolkit());

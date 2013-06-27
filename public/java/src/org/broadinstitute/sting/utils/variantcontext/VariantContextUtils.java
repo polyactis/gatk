@@ -704,7 +704,7 @@ public class VariantContextUtils {
         return merged;
     }
 
-    private static final boolean hasPLIncompatibleAlleles(final Collection<Allele> alleleSet1, final Collection<Allele> alleleSet2) {
+    public static final boolean hasPLIncompatibleAlleles(final Collection<Allele> alleleSet1, final Collection<Allele> alleleSet2) {
         final Iterator<Allele> it1 = alleleSet1.iterator();
         final Iterator<Allele> it2 = alleleSet2.iterator();
 
@@ -900,7 +900,7 @@ public class VariantContextUtils {
         return mappedVCs;
     }
 
-    private static class AlleleMapper {
+    public static class AlleleMapper {
         private VariantContext vc = null;
         private Map<Allele, Allele> map = null;
         public AlleleMapper(VariantContext vc)          { this.vc = vc; }
@@ -919,7 +919,7 @@ public class VariantContextUtils {
         }
     }
 
-    static private void verifyUniqueSampleNames(Collection<VariantContext> unsortedVCs) {
+    static public void verifyUniqueSampleNames(Collection<VariantContext> unsortedVCs) {
         Set<String> names = new HashSet<String>();
         for ( VariantContext vc : unsortedVCs ) {
             for ( String name : vc.getSampleNames() ) {
@@ -933,7 +933,7 @@ public class VariantContextUtils {
     }
 
 
-    static private Allele determineReferenceAllele(List<VariantContext> VCs) {
+    static public Allele determineReferenceAllele(List<VariantContext> VCs) {
         Allele ref = null;
 
         for ( VariantContext vc : VCs ) {
@@ -947,7 +947,7 @@ public class VariantContextUtils {
         return ref;
     }
 
-    static private AlleleMapper resolveIncompatibleAlleles(Allele refAllele, VariantContext vc, Set<Allele> allAlleles) {
+    static public AlleleMapper resolveIncompatibleAlleles(Allele refAllele, VariantContext vc, Set<Allele> allAlleles) {
         if ( refAllele.equals(vc.getReference()) )
             return new AlleleMapper(vc);
         else {
