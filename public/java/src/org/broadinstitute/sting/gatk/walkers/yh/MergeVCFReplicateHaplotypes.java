@@ -343,7 +343,9 @@ public class MergeVCFReplicateHaplotypes extends RodWalker<Integer, Integer> {
 	public class Diplotype{
 		Haplotype haplotype1;
 		Haplotype haplotype2;
-		int noOfLoci;
+		int noOfLoci=0;
+		boolean noOfLociSetUponInit = false;
+		boolean haplotypeByteArrayInitiated = false;
 		ByteArrayOutputStream haplotype1Bases;
 		ByteArrayOutputStream haplotype2Bases;
 		public byte[] haplotype1ByteArray;	//2013.06.17 more memory efficient than haplotype1, more function than haplotype1Bases
@@ -354,11 +356,13 @@ public class MergeVCFReplicateHaplotypes extends RodWalker<Integer, Integer> {
 		public String chromosome;
 		
 		public Diplotype(){
+			noOfLociSetUponInit = false;
 			haplotype1Bases = new ByteArrayOutputStream();	//ArrayList<Byte>() uses too much memory
 			haplotype2Bases = new ByteArrayOutputStream();	//ArrayList<Byte>();
 		}
 		public Diplotype(int _noOfLoci){
 			noOfLoci = _noOfLoci;
+			noOfLociSetUponInit = true;
 			haplotype1Bases = new ByteArrayOutputStream();	//ArrayList<Byte>();
 			haplotype2Bases = new ByteArrayOutputStream();	//ArrayList<Byte>();
 		}
@@ -383,6 +387,9 @@ public class MergeVCFReplicateHaplotypes extends RodWalker<Integer, Integer> {
 			}
 			
 			currentLocusIndex += 1;
+			if (noOfLociSetUponInit==false){
+				noOfLoci+=1;
+			}
 			
 		}
 		/*
@@ -390,13 +397,13 @@ public class MergeVCFReplicateHaplotypes extends RodWalker<Integer, Integer> {
 		 * 	like "AT", instead of 'TA'
 		 */
 		public byte[] getGenotypeAtOnePosition(int position, boolean sorted){
-			
+			//position is 1-based, so do not pass 0 
 			// check if it's initialized or not
-			if (haplotype1ByteArray.length==0){
+			if (haplotypeByteArrayInitiated==false){
 				initiateHaplotypeByteArray();
 			}
 			byte[] returnGenotype = new byte[2];
-			byte alleleA = haplotype1ByteArray[position-1];
+			byte alleleA = haplotype1ByteArray[position-1];//position is 1-based, 
 			byte alleleB = haplotype2ByteArray[position-1];
 			if (sorted==true){
 				if (alleleA>alleleB){
@@ -422,7 +429,7 @@ public class MergeVCFReplicateHaplotypes extends RodWalker<Integer, Integer> {
 		public void initiateHaplotypeByteArray(){
 			haplotype1ByteArray = haplotype1Bases.toByteArray();
 			haplotype2ByteArray = haplotype2Bases.toByteArray();
-			
+			haplotypeByteArrayInitiated = true;
 		}
 		/*
 		 * this is needed because haplotype1Bases and haplotype2Bases do not have good methods to access individual allele
@@ -715,7 +722,7 @@ public class MergeVCFReplicateHaplotypes extends RodWalker<Integer, Integer> {
 		if (vcs == null || vcs.size() == 0) {
 			return 0;
 		}
-
+		
 		for (VariantContext vc: vcs){
 			noOfLoci += 1;
 			variantContextCollection.add(vc);

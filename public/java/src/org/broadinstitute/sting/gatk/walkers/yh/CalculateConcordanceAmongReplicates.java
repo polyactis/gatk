@@ -4,6 +4,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -15,11 +16,18 @@ import java.util.regex.Pattern;
 
 import org.broadinstitute.sting.commandline.Argument;
 import org.broadinstitute.sting.commandline.Output;
+import org.broadinstitute.sting.gatk.contexts.AlignmentContext;
+import org.broadinstitute.sting.gatk.contexts.ReferenceContext;
+import org.broadinstitute.sting.gatk.refdata.RefMetaDataTracker;
+import org.broadinstitute.sting.gatk.walkers.yh.MergeVCFReplicateHaplotypes.Diplotype;
 import org.broadinstitute.sting.utils.SampleUtils;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFHeader;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFHeaderLine;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFUtils;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFWriter;
+import org.broadinstitute.sting.utils.variantcontext.Genotype;
+import org.broadinstitute.sting.utils.variantcontext.GenotypesContext;
+import org.broadinstitute.sting.utils.variantcontext.VariantContext;
 import org.broadinstitute.sting.utils.variantcontext.VariantContextUtils;
 
 public class CalculateConcordanceAmongReplicates extends MergeVCFReplicateHaplotypes {
@@ -89,11 +97,15 @@ public class CalculateConcordanceAmongReplicates extends MergeVCFReplicateHaplot
 	
 	
 	public void onTraversalDone(Integer result) {
+		logger.info(result + " loci to be processed.");
+		logger.info(sampleID2Diplotype.size() + " samples.");
+		logger.info("");
+		
 		int i, j, k;
 		String replicate1ID, replicate2ID;
 		byte[] replicate1Genotype, replicate2Genotype;
 		Diplotype replicate1Diplotype, replicate2Diplotype;
-		Integer noOfMatches, noOfLoci, noOfMatchesHomo,  noOfLociHomo;
+		Integer _noOfMatches, _noOfLoci, _noOfMatchesHomo, _noOfLociHomo;
 		Double concordance, concordanceHomo;
 		int noOfReplicatePairs = 0;
 		int noOfUniqueSamplesWithReplicates = 0;
@@ -111,37 +123,37 @@ public class CalculateConcordanceAmongReplicates extends MergeVCFReplicateHaplot
 					noOfReplicatePairs ++;
 					replicate2ID = sampleIDList.get(j);
 					replicate2Diplotype = sampleID2Diplotype.get(replicate2ID);
-					noOfMatches =0;
-					noOfLoci = 0;
-					noOfMatchesHomo = 0;	//homozygotes at both replicates
-					noOfLociHomo = 0;	//homozygotes at both replicates
+					_noOfMatches =0;
+					_noOfLoci = 0;
+					_noOfMatchesHomo = 0;	//homozygotes at both replicates
+					_noOfLociHomo = 0;	//homozygotes at both replicates
 					for (k=0; k<replicate2Diplotype.noOfLoci; k++){
-						replicate1Genotype = replicate1Diplotype.getGenotypeAtOnePosition(k, true);
-						replicate2Genotype = replicate2Diplotype.getGenotypeAtOnePosition(k, true);
-						if (replicate1Genotype==replicate2Genotype){
-							noOfMatches++;
+						replicate1Genotype = replicate1Diplotype.getGenotypeAtOnePosition(k+1, true);
+						replicate2Genotype = replicate2Diplotype.getGenotypeAtOnePosition(k+1, true);
+						if (replicate1Genotype[0]==replicate2Genotype[0] && replicate1Genotype[1]==replicate2Genotype[1]){
+							_noOfMatches++;
 							if (replicate1Genotype[0]==replicate1Genotype[1] && replicate2Genotype[0]==replicate2Genotype[1]){
-								noOfMatchesHomo++;
+								_noOfMatchesHomo++;
 							}
 						}
-						noOfLoci++;
+						_noOfLoci++;
 						if (replicate1Genotype[0]==replicate1Genotype[1] && replicate2Genotype[0]==replicate2Genotype[1]){
-							noOfLociHomo++;
+							_noOfLociHomo++;
 						}
 						
 					}
-					concordance =  noOfMatches.doubleValue()/noOfLoci.doubleValue();
-					concordanceHomo = noOfMatchesHomo.doubleValue()/noOfLociHomo.doubleValue();
+					concordance =  _noOfMatches.doubleValue()/_noOfLoci.doubleValue();
+					concordanceHomo = _noOfMatchesHomo.doubleValue()/_noOfLociHomo.doubleValue();
 					
 					//output the stat
 					Vector<String> statDataRow  = new Vector<String>();
 					statDataRow.add(replicate1ID);
 					statDataRow.add(replicate2ID);
-					statDataRow.add(noOfMatches.toString());
-					statDataRow.add(noOfLoci.toString());	
+					statDataRow.add(_noOfMatches.toString());
+					statDataRow.add(_noOfLoci.toString());	
 					statDataRow.add(concordance.toString());
-					statDataRow.add(noOfMatchesHomo.toString());
-					statDataRow.add(noOfLociHomo.toString());
+					statDataRow.add(_noOfMatchesHomo.toString());
+					statDataRow.add(_noOfLociHomo.toString());
 					statDataRow.add(concordanceHomo.toString());
 					
 					outputStringVector(concordanceStatWriter, statDataRow);	
