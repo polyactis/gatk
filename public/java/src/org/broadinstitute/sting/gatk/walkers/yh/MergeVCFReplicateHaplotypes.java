@@ -49,6 +49,7 @@ import org.broadinstitute.sting.utils.codecs.vcf.VCFFormatHeaderLine;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFHeader;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFHeaderLine;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFHeaderLineType;
+import org.broadinstitute.sting.utils.codecs.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFUtils;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFWriter;
 import org.broadinstitute.sting.utils.variantcontext.Allele;
@@ -171,13 +172,13 @@ public class MergeVCFReplicateHaplotypes extends RodWalker<Integer, Integer> {
 		}
 		
 		if (KEEP_ORIGINAL_CHR_COUNTS) {
-			headerLines.add(new VCFFormatHeaderLine("AC_Orig", 1,
+			headerLines.add(new VCFInfoHeaderLine("AC_Orig", 1,
 					VCFHeaderLineType.Integer, "Original AC"));
-			headerLines.add(new VCFFormatHeaderLine("AF_Orig", 1,
+			headerLines.add(new VCFInfoHeaderLine("AF_Orig", 1,
 					VCFHeaderLineType.Float, "Original AF"));
-			headerLines.add(new VCFFormatHeaderLine("AN_Orig", 1,
+			headerLines.add(new VCFInfoHeaderLine("AN_Orig", 1,
 					VCFHeaderLineType.Integer, "Original AN"));
-			headerLines.add(new VCFFormatHeaderLine("DP_Orig", 1,
+			headerLines.add(new VCFInfoHeaderLine("DP_Orig", 1,
 					VCFHeaderLineType.Integer, "Original DP"));
 		}
 		
