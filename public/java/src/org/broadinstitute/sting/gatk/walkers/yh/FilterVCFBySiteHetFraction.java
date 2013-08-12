@@ -2,7 +2,7 @@
  * 2013.08.12 a program that filters loci in VCF file based on the heterozygous fraction of each locus
  *		java -jar dist/GenomeAnalysisTK.jar -T FilterVCFBySiteHetFraction
  *		--variant /Network/Data/vervet/db/genotype_file/method_101/89279_VCF_88057_VCF_Scaffold3.filterByMaxSNPMissingRate.recode.vcf.gz
- *		--maxHetFraction 0.6 --reference_sequence /Network/Data/vervet/db/individual_sequence/3280_vervet_ref_6.0.3.fasta
+ *		--maxLocusHetFraction 0.6 --reference_sequence /Network/Data/vervet/db/individual_sequence/3280_vervet_ref_6.0.3.fasta
  *		--out /tmp/Scaffold3.maxHetFraction0.6.vcf
  *
  */
@@ -46,9 +46,9 @@ public class FilterVCFBySiteHetFraction  extends RodWalker<Integer, Integer> {
 	@Output(doc = "File to which variants should be written", required = false)
 	public VCFWriter vcfWriter;
 
-	@Argument(fullName = "maxHetFraction", shortName = "mHF", doc = "maximum fraction of heterozygous calls in one site.",
+	@Argument(fullName = "maxLocusHetFraction", shortName = "mHF", doc = "maximum fraction of heterozygous calls at one locus.",
 			required = false)
-	double maxHetFraction = 0.6;
+	double maxLocusHetFraction = 0.6;
 	
 	Long no_of_total_loci = (long) 0;
 	Long no_of_retained_loci = (long) 0;
@@ -107,7 +107,7 @@ public class FilterVCFBySiteHetFraction  extends RodWalker<Integer, Integer> {
 			float hetFraction = no_of_hets/no_of_non_missing_genotypes;
 			
 				
-			if (hetFraction<=maxHetFraction) { 
+			if (hetFraction<=maxLocusHetFraction) { 
 				no_of_retained_loci++;
 				//sub = subsetRecord(vc, selectedSamples);
 				if (vcfWriter != null) {
