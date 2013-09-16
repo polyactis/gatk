@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.Vector;
 
 import org.broadinstitute.sting.gatk.contexts.AlignmentContext;
 import org.broadinstitute.sting.gatk.contexts.ReferenceContext;
@@ -25,6 +26,7 @@ import org.broadinstitute.sting.utils.codecs.vcf.VCFConstants;
 import org.broadinstitute.sting.utils.exceptions.ReviewedStingException;
 import org.broadinstitute.sting.utils.variantcontext.Allele;
 import org.broadinstitute.sting.utils.variantcontext.Genotype;
+import org.broadinstitute.sting.utils.variantcontext.GenotypeLikelihoods;
 import org.broadinstitute.sting.utils.variantcontext.GenotypesContext;
 import org.broadinstitute.sting.utils.variantcontext.VariantContext;
 import org.broadinstitute.sting.utils.variantcontext.VariantContextBuilder;
@@ -36,6 +38,7 @@ import org.broadinstitute.sting.utils.variantcontext.VariantContextUtils.Genotyp
 /**
  * Combines VCF records from Beagle (v4) VCF and Pre-Beagle VCF files.
  * 	a child of GATK combineVariants to combine Beagle and Pre-Beagle VCF, taking priority of Beagle VCF, but add attributes from Pre-Beagle VCF to it.
+ * 	It calculates PL (likelihood) and GQ (Genotype Quality) from Beagle GP (Genotype probability), instead of using old ones from Pre-Beagle VCF.
  *
  * <p>
  * 
@@ -67,6 +70,7 @@ import org.broadinstitute.sting.utils.variantcontext.VariantContextUtils.Genotyp
 
 public class CombineBeagleAndPreBeagleVariants extends CombineVariants{
 
+	
 	private static void mergeGenotypes(GenotypesContext mergedGenotypes,
 			VariantContext oneVC, AlleleMapper alleleMapping,
 			boolean uniqifySamples) {
@@ -91,24 +95,67 @@ public class CombineBeagleAndPreBeagleVariants extends CombineVariants{
 
 	private static void addGenotypeAttributesFromOtherVariantContext(GenotypesContext mergedGenotypes,
 			VariantContext oneVC, AlleleMapper alleleMapping) {
-		for (Genotype newG : oneVC.getGenotypes()) {
-			String name = newG.getSampleName();
-			if (mergedGenotypes.containsSample(name)) {
+		/*
+		 * 2013.09.15 deal with situation that newG (from oneVC, pre-Beagle genotype) could be "./." (instead of "./.:.:.") when it comes out
+		 * 	of GATK and its depth is 0.
+		 * 
+		 */
+		Double sndPriorityGenotypeLog10PError = null;
+		double errorProbability = 0.0;
+		double maxGenotypeProbability = -1;
+		int indexOfGenotypeWithMaxProbability = -1;
+		Vector<Double> genotypeProbabilityVector = new Vector<Double>();
+		/*
+		//2013.09.15 uniqueGenotypeAttributeNameSet is to store genotype FORMAT attribute names
+		// so that for missing pre-Beagle genotypes ("./."), there is a way to add 
+		Set<String> sndPriorityGenotypeAttributeKeySet = new HashSet<String>();
+		boolean needLog10PError=false;
+		boolean needPL = false;
+		for (Genotype sndPriorityGenotype : oneVC.getGenotypes()) {
+			sndPriorityGenotypeAttributeKeySet.addAll(sndPriorityGenotype.getAttributes().keySet());
+			if (sndPriorityGenotype.hasLog10PError()){
+				needLog10PError = true;
+			}
+			if (sndPriorityGenotype.hasLikelihoods()){
+				needPL = true;
+			}
+		}
+		logger.info("FORMAT at " + oneVC.getChr() + " : " + oneVC.getStart() + " is " + sndPriorityGenotypeAttributeKeySet.toString() + " \n");
+		*/
+		for (Genotype sndPriorityGenotype : oneVC.getGenotypes()) {
+			String sampleName = sndPriorityGenotype.getSampleName();
+			//sndPriorityGenotypeAttributeKeySet.addAll(sndPriorityGenotype.getAttributes().keySet());
+			if (mergedGenotypes.containsSample(sampleName)) {
+				Genotype oldG = mergedGenotypes.get(sampleName);
+				//reset
+				String[] genotypeProbabilityStrArray = oldG.getAttributeAsString("GP", "").split(",");
+				//logger.info("GP at " + sndPriorityGenotype.getSampleName() + " is " + oldG.getAttributeAsString("GP", "") + " \n");
+				double[] log10Likelihoods = new double[genotypeProbabilityStrArray.length];
+				//double[] log10Likelihoods = new double[3];	//3 could cause Exception when there are >1 alternative alleles, etc.
+				errorProbability = 0.0;
+				indexOfGenotypeWithMaxProbability = -1;
+				maxGenotypeProbability = -1;
+				genotypeProbabilityVector.clear();
+				
 				// adding attributes to existing genotypes in mergedGenotypes
-				Genotype oldG = mergedGenotypes.get(name);
 				if (alleleMapping.needsRemapping()) {
 					final List<Allele> alleles = alleleMapping.needsRemapping() ? alleleMapping
-							.remap(newG.getAlleles()) : newG.getAlleles();
+							.remap(sndPriorityGenotype.getAlleles()) : sndPriorityGenotype.getAlleles();
 					
-					//newG = new Genotype(name, alleles, g.getLog10PError(),
+					//sndPriorityGenotype = new Genotype(sampleName, alleles, g.getLog10PError(),
 					//		g.getFilters(), g.getAttributes(), g.isPhased());
 				}
-				//get all attributes from newG
+				//get all attributes from sndPriorityGenotype.
+				// 2013.09.15 
 				Map<String, Object> newGenotypeAttributes = new TreeMap<String, Object>();
-				for (final Map.Entry<String, Object> p : newG.getAttributes().entrySet()) {
-					String key = p.getKey();
-					if (key!="GT"){
-						newGenotypeAttributes.put(key, p.getValue());
+				//logger.info("PL at " + sndPriorityGenotype.getSampleName() + " is " + sndPriorityGenotype.getAttribute("PL") + " \n");
+				// for missing genotype ("./."), PL is simply "." and sndPriorityGenotype.getAttributes() returns all attributes in FORMAT.
+				for (final Map.Entry<String, Object> p: sndPriorityGenotype.getAttributes().entrySet()) {
+					String attributeKey = p.getKey();
+					if (attributeKey!="GT" && attributeKey!="PL" && attributeKey!="GQ"){
+						//skip likelihoods
+						//newGenotypeAttributes.put(attributeKey, ".,.,.");	//2103.09.15 put NA there if it does not have an attribute
+						newGenotypeAttributes.put(attributeKey, sndPriorityGenotype.getAttribute(attributeKey, "."));
 					}
 				}
 				// add/overwrite newGenotypeAttributes with attributes from oldG
@@ -122,20 +169,58 @@ public class CombineBeagleAndPreBeagleVariants extends CombineVariants{
 					}
 					*/
 				}
+				//String[] genotypeProbabilityStrArray = oldG.getAttributeAsString("GP", "").split(",");
+				// 2013.09.16 infer likelihood from genotype probability
+				int genotypeIndex=0;
+				for (final String genotypeProbabilityStr: genotypeProbabilityStrArray){
+					Double genotypeProbability = Double.parseDouble(genotypeProbabilityStr);
+					genotypeProbabilityVector.add(genotypeProbability);
+					if (genotypeProbability>maxGenotypeProbability){
+						maxGenotypeProbability = genotypeProbability;
+						indexOfGenotypeWithMaxProbability  = genotypeIndex;
+					}
+					if (genotypeProbability<=0){
+						log10Likelihoods[genotypeIndex] = -10.0;	//close to 0
+					}
+					else{
+						log10Likelihoods[genotypeIndex] = Math.log10(genotypeProbability);
+						
+					}
+					genotypeIndex++;
+					
+				}
+				errorProbability = 1-maxGenotypeProbability;
+				sndPriorityGenotypeLog10PError = Math.log10(errorProbability);	//could handle 0
+				newGenotypeAttributes.remove("PL");	//remove PL , so that log10Likelihoods could overwrite it
 				/*
 				double oldGQ = oldG.getPhredScaledQual();
 				if (!oldG.hasLog10PError()){
-					//double GQ = newG.getLog10PError();
-					double GQ = newG.getPhredScaledQual();
+					//double GQ = sndPriorityGenotype.getLog10PError();
+					double GQ = sndPriorityGenotype.getPhredScaledQual();
 				}
 				*/
 				
 				//now generate a new genotype using oldG's genotype and combined newGenotypeAttributes
-				// note, log10PError could also be copied from newG if oldG doesn't have it
-				oldG =  new Genotype(oldG.getSampleName(), oldG.getAlleles(), oldG.hasLog10PError() ? oldG.getLog10PError() : newG.getLog10PError(), 
-						oldG.filtersWereApplied() ? oldG.getFilters() : null, newGenotypeAttributes, oldG.isPhased());
+				// note, log10PError could also be copied from sndPriorityGenotype if oldG doesn't have it
+				// 2013.09.15 fake a sndPriorityGenotypeLog10PError if it's needed and sndPriorityGenotype (GATK missing genotype) not having it
+				/*
+				if (needLog10PError){
+					if (sndPriorityGenotype.hasLog10PError()){
+						sndPriorityGenotypeLog10PError = sndPriorityGenotype.getLog10PError();
+					}
+					else{
+						//random default,to make GATK -> TrioCaller work
+						sndPriorityGenotypeLog10PError = -5.0;
+						//sndPriorityGenotypeLog10PError = null;	//would cause java.lang.NullPointerException
+					}
+				}
+				*/
+				oldG =  new Genotype(oldG.getSampleName(), oldG.getAlleles(), 
+						oldG.hasLog10PError() ? oldG.getLog10PError() : sndPriorityGenotypeLog10PError, 
+						oldG.filtersWereApplied() ? oldG.getFilters() : null,
+						newGenotypeAttributes, oldG.isPhased(), log10Likelihoods);
 				mergedGenotypes.replace(oldG);	//not sure if this does what i want
-				//mergedGenotypes.add(newG);
+				//mergedGenotypes.add(sndPriorityGenotype);
 			}
 		}
 	}
